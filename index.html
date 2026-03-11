@@ -679,16 +679,34 @@ Respond ONLY with a valid JSON object — no markdown, no explanation, just raw 
       })
     });
 
+    // Check for HTTP errors first
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      if (response.status === 504) {
+        setStatus('Request timed out — try again in a moment.', true);
+      } else {
+        setStatus('API error (' + response.status + '): ' + (errData.error || 'Unknown error'), true);
+      }
+      document.getElementById('analyze-btn').disabled = false;
+      return;
+    }
+
     const data = await response.json();
+
+    // Check for Anthropic-level errors
+    if (data.error) {
+      setStatus('Claude error: ' + (data.error.message || JSON.stringify(data.error)), true);
+      document.getElementById('analyze-btn').disabled = false;
+      return;
+    }
 
     // Collect all text blocks
     const textBlocks = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
 
-    // Parse JSON from response
+    // Parse JSON — try multiple strategies
     let parsed = null;
     try {
       const clean = textBlocks.replace(/```json|```/g, '').trim();
-      // Find first { ... } block
       const start = clean.indexOf('{');
       const end = clean.lastIndexOf('}');
       if (start !== -1 && end !== -1) {
@@ -698,8 +716,31 @@ Respond ONLY with a valid JSON object — no markdown, no explanation, just raw 
       console.error('JSON parse error:', e, textBlocks);
     }
 
+    // If parse failed, retry without web search (some sites block bots)
     if (!parsed) {
-      setStatus('Could not parse AI response. Try a different URL.', true);
+      setStatus('Retrying without web search…', true);
+      try {
+        const retry = await fetch("/api/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 1000,
+            messages: [{ role: "user", content: prompt }]
+          })
+        });
+        const retryData = await retry.json();
+        const retryText = (retryData.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
+        const clean2 = retryText.replace(/```json|```/g, '').trim();
+        const s2 = clean2.indexOf('{'), e2 = clean2.lastIndexOf('}');
+        if (s2 !== -1 && e2 !== -1) parsed = JSON.parse(clean2.slice(s2, e2 + 1));
+      } catch (e2) {
+        console.error('Retry failed:', e2);
+      }
+    }
+
+    if (!parsed) {
+      setStatus('Could not analyze this URL. The site may block automated access.', true);
       document.getElementById('analyze-btn').disabled = false;
       return;
     }
