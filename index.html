@@ -1,343 +1,789 @@
-import { useState, useCallback } from "react";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Discovery Brief · Auto-Fill</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0f0e0d;
+    --paper: #f5f2ec;
+    --cream: #ede9df;
+    --accent: #c8470a;
+    --accent-light: #f0e8e1;
+    --muted: #8a8478;
+    --border: #d4cfc5;
+    --filled: #1a3d2b;
+    --filled-bg: #eef5f0;
+  }
 
-const FIELDS = [
-  {
-    section: "01 · Marketing Overview",
-    fields: [
-      { id: "marketingTypes", label: "Types of marketing currently practiced", multi: true },
-      { id: "tagline", label: "Tagline / slogan", multi: false },
-      { id: "mission", label: "Mission statement", multi: true },
-      { id: "differentiator", label: "What differentiates the company?", multi: true },
-      { id: "conversionTracking", label: "Conversion tracking / lead forms", multi: false },
-      { id: "analyticsGoals", label: "Current analytics / tracking goals", multi: false },
-    ],
-  },
-  {
-    section: "02 · Product & Service Overview",
-    fields: [
-      { id: "productDefinition", label: "Brief product/service definition", multi: true },
-      { id: "productSegments", label: "Different products for different client types?", multi: true },
-      { id: "productDifferentiation", label: "Product differentiation from competition", multi: true },
-      { id: "operationalPrinciples", label: "Key operational principles / business backbone", multi: true },
-    ],
-  },
-  {
-    section: "03 · Competitive Overview",
-    fields: [
-      { id: "competitors", label: "Benchmark competitors", multi: true },
-      { id: "competitorStandout", label: "What makes those competitors stand out?", multi: true },
-      { id: "competitorModel", label: "Elements to model in redesign", multi: true },
-    ],
-  },
-  {
-    section: "04 · Website Future State",
-    fields: [
-      { id: "websiteImportance", label: "Most important factor of the new website", multi: true },
-      { id: "functionalRequirements", label: "Functional requirements needed", multi: true },
-      { id: "visualRequirements", label: "Visual elements needed", multi: true },
-      { id: "colorPreferences", label: "Color preferences", multi: false },
-      { id: "socialMedia", label: "Social media elements to integrate", multi: false },
-      { id: "sitemap", label: "Proposed sitemap / key pages", multi: true },
-      { id: "blogging", label: "Will you be blogging?", multi: false },
-    ],
-  },
-  {
-    section: "05 · Happiness Factor",
-    fields: [
-      { id: "happySites", label: "Websites that make you happy", multi: true },
-      { id: "happyWhy", label: "What specifically makes those sites enjoyable?", multi: true },
-    ],
-  },
-  {
-    section: "06 · Hosting Requirements",
-    fields: [{ id: "currentHost", label: "Current website host", multi: false }],
-  },
-];
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-const ALL_FIELD_IDS = FIELDS.flatMap((s) => s.fields.map((f) => f.id));
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+  }
 
-export default function DiscoveryBrief() {
-  const [url, setUrl] = useState("");
-  const [values, setValues] = useState({});
-  const [filled, setFilled] = useState({});
-  const [status, setStatus] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [analyzed, setAnalyzed] = useState(false);
-  const [toast, setToast] = useState("");
+  /* Header */
+  .header {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 2.5rem 3rem;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 2rem;
+  }
 
-  const showToast = (msg) => {
-    setToast(msg);
-    setTimeout(() => setToast(""), 2800);
-  };
+  .header-left h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.6rem;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .header-left h1 em {
+    font-style: italic;
+    color: #c8a882;
+  }
+  .header-left p {
+    margin-top: 0.5rem;
+    font-size: 0.82rem;
+    color: #888;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
 
-  const analyzeURL = useCallback(async () => {
-    if (!url.trim()) return;
-    let target = url.trim();
-    if (!/^https?:\/\//i.test(target)) target = "https://" + target;
+  .header-badge {
+    background: var(--accent);
+    color: white;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.4rem 0.9rem;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
 
-    setLoading(true);
-    setAnalyzed(true);
-    setStatus("Fetching and analyzing " + target + " …");
+  /* URL Input Zone */
+  .url-zone {
+    background: var(--ink);
+    padding: 0 3rem 2.5rem;
+  }
 
-    const prompt = `You are a web analyst filling out a marketing discovery brief.
+  .url-input-wrap {
+    display: flex;
+    gap: 0;
+    border: 1px solid #333;
+    border-radius: 4px;
+    overflow: hidden;
+    max-width: 860px;
+  }
 
-Analyze this URL thoroughly: ${target}
+  .url-prefix {
+    background: #1e1e1e;
+    color: #666;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    padding: 0 1rem;
+    display: flex;
+    align-items: center;
+    border-right: 1px solid #333;
+    white-space: nowrap;
+  }
 
-Return ONLY a raw JSON object (no markdown, no backticks, no explanation) with these exact keys. Use "NOT FOUND" for anything you cannot determine:
+  #url-input {
+    flex: 1;
+    background: #161616;
+    color: #f0ede8;
+    border: none;
+    outline: none;
+    padding: 0.9rem 1.1rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.9rem;
+    letter-spacing: 0.01em;
+  }
+
+  #url-input::placeholder { color: #444; }
+
+  #analyze-btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 0 2rem;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 500;
+    cursor: pointer;
+    letter-spacing: 0.03em;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+  #analyze-btn:hover { background: #a33a08; }
+  #analyze-btn:disabled { background: #444; cursor: not-allowed; }
+
+  /* Status bar */
+  #status-bar {
+    display: none;
+    background: #1a1a1a;
+    color: #aaa;
+    padding: 0 3rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+  }
+  #status-bar.active {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding-top: 0.6rem;
+    padding-bottom: 0.8rem;
+  }
+  .pulse {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 1s infinite;
+    flex-shrink: 0;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+  }
+
+  /* Main layout */
+  .main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 3rem;
+  }
+
+  /* Section */
+  .section {
+    margin-bottom: 3.5rem;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    background: var(--cream);
+    padding: 0.2rem 0.5rem;
+    border-radius: 2px;
+  }
+
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.35rem;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+
+  .fill-count {
+    margin-left: auto;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+  }
+  .fill-count.complete { color: var(--filled); }
+
+  /* Field */
+  .field {
+    margin-bottom: 1.25rem;
+  }
+
+  .field label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin-bottom: 0.4rem;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  .ai-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--muted);
+    flex-shrink: 0;
+    transition: background 0.3s;
+  }
+  .field.filled .ai-dot { background: var(--filled); }
+
+  .field textarea, .field input[type="text"] {
+    width: 100%;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 0.75rem 0.9rem;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 300;
+    color: var(--ink);
+    line-height: 1.6;
+    resize: vertical;
+    transition: border-color 0.15s, background 0.3s;
+    outline: none;
+  }
+  .field textarea:focus, .field input[type="text"]:focus {
+    border-color: var(--ink);
+  }
+  .field.filled textarea, .field.filled input[type="text"] {
+    background: var(--filled-bg);
+    border-color: #b8d4c0;
+  }
+
+  textarea { min-height: 80px; }
+  textarea.short { min-height: 55px; }
+  textarea.tall { min-height: 110px; }
+
+  /* AI confidence badge */
+  .confidence {
+    display: inline-block;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.06em;
+    padding: 0.15rem 0.4rem;
+    border-radius: 2px;
+    margin-left: 0.3rem;
+    text-transform: uppercase;
+  }
+  .confidence.high { background: #dceee2; color: #1a6135; }
+  .confidence.med  { background: #fef3dd; color: #8a5a00; }
+  .confidence.low  { background: #fce8e6; color: #8a1c0e; }
+
+  /* Export */
+  .export-bar {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    padding: 2rem 0 1rem;
+    border-top: 1px solid var(--border);
+    margin-top: 1rem;
+  }
+
+  .btn {
+    padding: 0.7rem 1.6rem;
+    border-radius: 3px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 500;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    border: none;
+    transition: all 0.15s;
+  }
+  .btn-primary { background: var(--ink); color: white; }
+  .btn-primary:hover { background: #2a2a2a; }
+  .btn-outline { background: transparent; color: var(--ink); border: 1px solid var(--border); }
+  .btn-outline:hover { border-color: var(--ink); }
+
+  .export-note {
+    margin-left: auto;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+  }
+
+  /* Intro state */
+  .intro-hint {
+    text-align: center;
+    padding: 5rem 2rem;
+    color: var(--muted);
+  }
+  .intro-hint .big {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    color: var(--border);
+    font-style: italic;
+    margin-bottom: 0.75rem;
+  }
+  .intro-hint p {
+    font-size: 0.88rem;
+    line-height: 1.7;
+    max-width: 380px;
+    margin: 0 auto;
+  }
+
+  #form-area { display: none; }
+  #form-area.visible { display: block; }
+
+  /* Toast */
+  #toast {
+    position: fixed;
+    bottom: 2rem; right: 2rem;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 0.75rem 1.25rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-family: 'DM Mono', monospace;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.25s;
+    pointer-events: none;
+    z-index: 999;
+  }
+  #toast.show { opacity: 1; transform: translateY(0); }
+
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>Discovery <em>Brief</em></h1>
+    <p>AI-Powered Auto-Fill · Client Questionnaire</p>
+  </div>
+  <div class="header-badge">✦ Powered by Claude</div>
+</div>
+
+<div class="url-zone">
+  <div class="url-input-wrap">
+    <div class="url-prefix">→ URL</div>
+    <input type="text" id="url-input" placeholder="https://clientwebsite.com" />
+    <button id="analyze-btn" onclick="analyzeURL()">Analyze Site</button>
+  </div>
+</div>
+
+<div id="status-bar">
+  <div class="pulse"></div>
+  <span id="status-text">Analyzing website...</span>
+</div>
+
+<div class="main">
+  <div id="intro-hint" class="intro-hint">
+    <div class="big">Paste a URL above</div>
+    <p>Claude will visit the website and automatically fill out as much of the discovery questionnaire as it can find.</p>
+  </div>
+
+  <div id="form-area">
+    <!-- Section 1: Marketing -->
+    <div class="section" id="sec-marketing">
+      <div class="section-header">
+        <span class="section-num">01</span>
+        <span class="section-title">Marketing Overview</span>
+        <span class="fill-count" id="fill-marketing">— / 6</span>
+      </div>
+
+      <div class="field" id="f-marketing-types">
+        <label><span class="ai-dot"></span> Types of marketing currently practiced</label>
+        <textarea class="short" placeholder="e.g. SEO, social media, email, paid ads…"></textarea>
+      </div>
+      <div class="field" id="f-tagline">
+        <label><span class="ai-dot"></span> Tagline</label>
+        <input type="text" placeholder="Company tagline or slogan" />
+      </div>
+      <div class="field" id="f-mission">
+        <label><span class="ai-dot"></span> Mission statement</label>
+        <textarea class="short" placeholder="Company mission or vision statement"></textarea>
+      </div>
+      <div class="field" id="f-differentiator">
+        <label><span class="ai-dot"></span> What differentiates the company from competitors?</label>
+        <textarea placeholder="Key differentiators and unique value propositions"></textarea>
+      </div>
+      <div class="field" id="f-conversion">
+        <label><span class="ai-dot"></span> Conversion tracking interest (lead forms)</label>
+        <input type="text" placeholder="Current or desired conversion tracking setup" />
+      </div>
+      <div class="field" id="f-analytics">
+        <label><span class="ai-dot"></span> Current Google Analytics goals</label>
+        <input type="text" placeholder="Any known analytics or tracking in place" />
+      </div>
+    </div>
+
+    <!-- Section 2: Products & Services -->
+    <div class="section" id="sec-products">
+      <div class="section-header">
+        <span class="section-num">02</span>
+        <span class="section-title">Product & Service Overview</span>
+        <span class="fill-count" id="fill-products">— / 4</span>
+      </div>
+
+      <div class="field" id="f-product-def">
+        <label><span class="ai-dot"></span> Brief definition of product/service offering</label>
+        <textarea placeholder="Core product or service description"></textarea>
+      </div>
+      <div class="field" id="f-product-segments">
+        <label><span class="ai-dot"></span> Do certain products/services speak to different client types?</label>
+        <textarea placeholder="Any segmentation by client type or audience"></textarea>
+      </div>
+      <div class="field" id="f-product-diff">
+        <label><span class="ai-dot"></span> Product/service differentiation from competition</label>
+        <textarea placeholder="What sets the offering apart"></textarea>
+      </div>
+      <div class="field" id="f-operational-principles">
+        <label><span class="ai-dot"></span> Key operational principles / business backbone</label>
+        <textarea placeholder="Core values, operating principles, or business philosophy"></textarea>
+      </div>
+    </div>
+
+    <!-- Section 3: Competitive -->
+    <div class="section" id="sec-competitive">
+      <div class="section-header">
+        <span class="section-num">03</span>
+        <span class="section-title">Competitive Overview</span>
+        <span class="fill-count" id="fill-competitive">— / 3</span>
+      </div>
+
+      <div class="field" id="f-competitors">
+        <label><span class="ai-dot"></span> Benchmark competitors</label>
+        <textarea class="short" placeholder="Key competitors in the space"></textarea>
+      </div>
+      <div class="field" id="f-competitor-standout">
+        <label><span class="ai-dot"></span> What makes those competitors stand out?</label>
+        <textarea placeholder="What they do well / why they're notable"></textarea>
+      </div>
+      <div class="field" id="f-competitor-model">
+        <label><span class="ai-dot"></span> Elements to model in redesign</label>
+        <textarea placeholder="Inspiration elements from competitor sites or activity"></textarea>
+      </div>
+    </div>
+
+    <!-- Section 4: Website Future State -->
+    <div class="section" id="sec-website">
+      <div class="section-header">
+        <span class="section-num">04</span>
+        <span class="section-title">Website Future State</span>
+        <span class="fill-count" id="fill-website">— / 7</span>
+      </div>
+
+      <div class="field" id="f-website-importance">
+        <label><span class="ai-dot"></span> Most important factor of the new website</label>
+        <textarea class="short" placeholder="Primary goal or priority for the redesign"></textarea>
+      </div>
+      <div class="field" id="f-functional-req">
+        <label><span class="ai-dot"></span> Functional requirements</label>
+        <textarea placeholder="e.g. contact forms, booking, e-commerce, member portal…"></textarea>
+      </div>
+      <div class="field" id="f-visual-req">
+        <label><span class="ai-dot"></span> Visual elements needed</label>
+        <textarea placeholder="e.g. video, gallery, animations, interactive features…"></textarea>
+      </div>
+      <div class="field" id="f-colors">
+        <label><span class="ai-dot"></span> Color preferences</label>
+        <input type="text" placeholder="Brand colors, palette preferences, or hex codes" />
+      </div>
+      <div class="field" id="f-social">
+        <label><span class="ai-dot"></span> Social media elements to integrate</label>
+        <input type="text" placeholder="Social platforms and integration approach" />
+      </div>
+      <div class="field" id="f-sitemap">
+        <label><span class="ai-dot"></span> Proposed sitemap / fundamental methodologies</label>
+        <textarea class="tall" placeholder="Key pages, site structure, or business methodologies that drive content"></textarea>
+      </div>
+      <div class="field" id="f-blog">
+        <label><span class="ai-dot"></span> Blogging plans</label>
+        <input type="text" placeholder="Yes / No / Occasionally — content topics if known" />
+      </div>
+    </div>
+
+    <!-- Section 5: Happiness -->
+    <div class="section" id="sec-happiness">
+      <div class="section-header">
+        <span class="section-num">05</span>
+        <span class="section-title">Happiness Factor</span>
+        <span class="fill-count" id="fill-happiness">— / 2</span>
+      </div>
+
+      <div class="field" id="f-happy-sites">
+        <label><span class="ai-dot"></span> Websites that make you happy</label>
+        <textarea class="short" placeholder="URLs or names of sites you love"></textarea>
+      </div>
+      <div class="field" id="f-happy-why">
+        <label><span class="ai-dot"></span> What specifically makes those sites enjoyable?</label>
+        <textarea placeholder="Design elements, UX patterns, tone, or features you admire"></textarea>
+      </div>
+    </div>
+
+    <!-- Section 6: Hosting -->
+    <div class="section" id="sec-hosting">
+      <div class="section-header">
+        <span class="section-num">06</span>
+        <span class="section-title">Hosting Requirements</span>
+        <span class="fill-count" id="fill-hosting">— / 1</span>
+      </div>
+
+      <div class="field" id="f-host">
+        <label><span class="ai-dot"></span> Current website host</label>
+        <input type="text" placeholder="e.g. GoDaddy, WP Engine, Squarespace, AWS…" />
+      </div>
+    </div>
+
+    <!-- Export -->
+    <div class="export-bar">
+      <button class="btn btn-primary" onclick="exportTXT()">Export as TXT</button>
+      <button class="btn btn-outline" onclick="clearAll()">Clear All</button>
+      <span class="export-note" id="filled-summary">0 fields filled</span>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const FIELD_MAP = {
+  'f-marketing-types':       { key: 'marketingTypes',         label: 'Types of Marketing' },
+  'f-tagline':               { key: 'tagline',                label: 'Tagline' },
+  'f-mission':               { key: 'mission',                label: 'Mission Statement' },
+  'f-differentiator':        { key: 'differentiator',         label: 'Company Differentiators' },
+  'f-conversion':            { key: 'conversionTracking',     label: 'Conversion Tracking' },
+  'f-analytics':             { key: 'analyticsGoals',         label: 'Analytics Goals' },
+  'f-product-def':           { key: 'productDefinition',      label: 'Product/Service Definition' },
+  'f-product-segments':      { key: 'productSegments',        label: 'Client Segments' },
+  'f-product-diff':          { key: 'productDifferentiation', label: 'Product Differentiation' },
+  'f-operational-principles':{ key: 'operationalPrinciples',  label: 'Operational Principles' },
+  'f-competitors':           { key: 'competitors',            label: 'Benchmark Competitors' },
+  'f-competitor-standout':   { key: 'competitorStandout',     label: 'Competitor Standouts' },
+  'f-competitor-model':      { key: 'competitorModel',        label: 'Elements to Model' },
+  'f-website-importance':    { key: 'websiteImportance',      label: 'Most Important Website Factor' },
+  'f-functional-req':        { key: 'functionalRequirements', label: 'Functional Requirements' },
+  'f-visual-req':            { key: 'visualRequirements',     label: 'Visual Elements' },
+  'f-colors':                { key: 'colorPreferences',       label: 'Color Preferences' },
+  'f-social':                { key: 'socialMedia',            label: 'Social Media Integration' },
+  'f-sitemap':               { key: 'sitemap',                label: 'Sitemap / Methodologies' },
+  'f-blog':                  { key: 'blogging',               label: 'Blogging Plans' },
+  'f-happy-sites':           { key: 'happySites',             label: 'Websites That Make You Happy' },
+  'f-happy-why':             { key: 'happyWhy',               label: 'What Makes Those Sites Happy' },
+  'f-host':                  { key: 'currentHost',            label: 'Current Host' },
+};
+
+const SECTION_FIELDS = {
+  'marketing':   ['f-marketing-types','f-tagline','f-mission','f-differentiator','f-conversion','f-analytics'],
+  'products':    ['f-product-def','f-product-segments','f-product-diff','f-operational-principles'],
+  'competitive': ['f-competitors','f-competitor-standout','f-competitor-model'],
+  'website':     ['f-website-importance','f-functional-req','f-visual-req','f-colors','f-social','f-sitemap','f-blog'],
+  'happiness':   ['f-happy-sites','f-happy-why'],
+  'hosting':     ['f-host'],
+};
+
+function setStatus(text, active = true) {
+  const bar = document.getElementById('status-bar');
+  const txt = document.getElementById('status-text');
+  txt.textContent = text;
+  if (active) bar.classList.add('active');
+  else bar.classList.remove('active');
+}
+
+function fillField(fieldId, value, confidence = 'high') {
+  if (!value || value.trim() === '' || value.toLowerCase().includes('not found') || value.toLowerCase().includes('n/a')) return;
+  const wrapper = document.getElementById(fieldId);
+  if (!wrapper) return;
+  const el = wrapper.querySelector('textarea, input[type="text"]');
+  if (!el) return;
+  el.value = value.trim();
+  wrapper.classList.add('filled');
+  const dot = wrapper.querySelector('.ai-dot');
+  const label = wrapper.querySelector('label');
+  // Add confidence badge
+  let existing = label.querySelector('.confidence');
+  if (existing) existing.remove();
+  const badge = document.createElement('span');
+  badge.className = `confidence ${confidence}`;
+  badge.textContent = confidence === 'high' ? '✓ auto' : confidence === 'med' ? '~ inferred' : '? guessed';
+  label.appendChild(badge);
+  updateCounts();
+}
+
+function updateCounts() {
+  let total = 0;
+  Object.entries(SECTION_FIELDS).forEach(([sec, fields]) => {
+    let filled = 0;
+    fields.forEach(fid => {
+      const w = document.getElementById(fid);
+      if (w && w.classList.contains('filled')) filled++;
+    });
+    const el = document.getElementById(`fill-${sec}`);
+    if (el) {
+      el.textContent = `${filled} / ${fields.length}`;
+      el.classList.toggle('complete', filled === fields.length);
+    }
+    total += filled;
+  });
+  const summary = document.getElementById('filled-summary');
+  if (summary) summary.textContent = `${total} of 23 fields filled`;
+}
+
+async function analyzeURL() {
+  const raw = document.getElementById('url-input').value.trim();
+  if (!raw) { showToast('Please enter a URL'); return; }
+  let url = raw;
+  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+
+  document.getElementById('analyze-btn').disabled = true;
+  document.getElementById('intro-hint').style.display = 'none';
+  document.getElementById('form-area').classList.add('visible');
+  setStatus(`Fetching and analyzing ${url} …`);
+
+  const prompt = `You are a web analyst helping fill out a marketing discovery brief for a client.
+
+Visit and analyze this URL: ${url}
+
+Extract as much information as possible to answer the following discovery questionnaire. For each field, provide the best answer you can find. If you cannot find information for a field, respond with "NOT FOUND". Be concise but informative.
+
+Respond ONLY with a valid JSON object — no markdown, no explanation, just raw JSON. Use these exact keys:
 
 {
-  "marketingTypes": "types of marketing evident: SEO, social, email, ads, content marketing, etc.",
-  "tagline": "company tagline or slogan",
-  "mission": "mission statement or brand purpose",
-  "differentiator": "unique value propositions, claims, awards, differentiators",
-  "conversionTracking": "evidence of lead forms, CTAs, booking tools, contact forms",
-  "analyticsGoals": "analytics integrations, tracking pixels, goals visible",
-  "productDefinition": "core product or service summary",
-  "productSegments": "different offerings for different client types",
+  "marketingTypes": "types of marketing evident on their site (SEO, social, email, ads, content, etc.)",
+  "tagline": "company tagline or slogan if visible",
+  "mission": "mission statement or brand purpose statement",
+  "differentiator": "what differentiates them — unique value props, awards, claims",
+  "conversionTracking": "evidence of lead forms, CTAs, booking tools",
+  "analyticsGoals": "any visible analytics integrations or tracking pixels",
+  "productDefinition": "brief summary of their core product or service",
+  "productSegments": "different products/services for different client types",
   "productDifferentiation": "how their offering differs from competitors",
-  "operationalPrinciples": "core values, philosophy, business principles",
-  "competitors": "likely competitors in this industry",
-  "competitorStandout": "what makes competitors in this space stand out",
-  "competitorModel": "elements worth modeling in a redesign",
+  "operationalPrinciples": "core values, operating principles, business philosophy",
+  "competitors": "infer or identify likely competitors in this industry/space",
+  "competitorStandout": "what typically makes competitors in this space stand out",
+  "competitorModel": "elements of competitor sites worth modeling",
   "websiteImportance": "primary purpose or goal of the current website",
-  "functionalRequirements": "features present: forms, booking, ecommerce, portals, etc.",
-  "visualRequirements": "visual elements: video, galleries, sliders, animations, etc.",
-  "colorPreferences": "primary brand colors and hex codes if detectable",
-  "socialMedia": "social platforms linked or integrated",
-  "sitemap": "main navigation and site structure",
+  "functionalRequirements": "features and functions on the current site (forms, booking, ecommerce, etc.)",
+  "visualRequirements": "visual elements present (video, gallery, sliders, animations, etc.)",
+  "colorPreferences": "primary brand colors used on the site (hex codes if possible)",
+  "socialMedia": "social media platforms linked or integrated",
+  "sitemap": "main navigation pages and site structure",
   "blogging": "evidence of blog, news, or content section",
-  "happySites": "well-designed comparable sites in their industry",
-  "happyWhy": "what makes those sites effective",
-  "currentHost": "hosting provider, CMS platform if detectable"
+  "happySites": "similar well-designed sites in their industry worth referencing",
+  "happyWhy": "what makes those similar sites effective",
+  "currentHost": "hosting provider if detectable (check page source, DNS clues, CMS platform)"
 }`;
 
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1000,
+        tools: [{ type: "web_search_20250305", name: "web_search" }],
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+
+    const data = await response.json();
+
+    // Collect all text blocks
+    const textBlocks = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
+
+    // Parse JSON from response
+    let parsed = null;
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          tools: [{ type: "web_search_20250305", name: "web_search" }],
-          messages: [{ role: "user", content: prompt }],
-        }),
-      });
-
-      const data = await res.json();
-      const text = (data.content || [])
-        .filter((b) => b.type === "text")
-        .map((b) => b.text)
-        .join("\n");
-
-      let parsed = null;
-      try {
-        const clean = text.replace(/```json|```/g, "").trim();
-        const s = clean.indexOf("{");
-        const e = clean.lastIndexOf("}");
-        if (s !== -1 && e !== -1) parsed = JSON.parse(clean.slice(s, e + 1));
-      } catch (err) {
-        console.error("Parse error", err);
+      const clean = textBlocks.replace(/```json|```/g, '').trim();
+      // Find first { ... } block
+      const start = clean.indexOf('{');
+      const end = clean.lastIndexOf('}');
+      if (start !== -1 && end !== -1) {
+        parsed = JSON.parse(clean.slice(start, end + 1));
       }
-
-      if (!parsed) {
-        setStatus("⚠ Could not parse response. Try another URL.");
-        setLoading(false);
-        return;
-      }
-
-      const newValues = {};
-      const newFilled = {};
-      ALL_FIELD_IDS.forEach((id) => {
-        const v = parsed[id];
-        if (v && v !== "NOT FOUND" && v.trim().length > 2) {
-          newValues[id] = v.trim();
-          newFilled[id] = true;
-        }
-      });
-
-      setValues(newValues);
-      setFilled(newFilled);
-      const count = Object.keys(newFilled).length;
-      setStatus(`✓ Analysis complete — ${count} of ${ALL_FIELD_IDS.length} fields filled`);
-    } catch (err) {
-      console.error(err);
-      setStatus("⚠ API error — please try again");
+    } catch (e) {
+      console.error('JSON parse error:', e, textBlocks);
     }
 
-    setLoading(false);
-  }, [url]);
+    if (!parsed) {
+      setStatus('Could not parse AI response. Try a different URL.', true);
+      document.getElementById('analyze-btn').disabled = false;
+      return;
+    }
 
-  const updateField = (id, val) => {
-    setValues((prev) => ({ ...prev, [id]: val }));
-    setFilled((prev) => ({ ...prev, [id]: val.trim().length > 0 }));
-  };
-
-  const clearAll = () => {
-    setValues({});
-    setFilled({});
-    setAnalyzed(false);
-    setStatus(null);
-    showToast("All fields cleared");
-  };
-
-  const exportTXT = () => {
-    let out = `DISCOVERY QUESTIONNAIRE\nExported: ${new Date().toLocaleDateString()}\nURL: ${url}\n${"─".repeat(50)}\n\n`;
-    FIELDS.forEach(({ section, fields }) => {
-      out += `${section.toUpperCase()}\n${"─".repeat(30)}\n`;
-      fields.forEach(({ id, label }) => {
-        out += `\n${label}\n${values[id] || "(not filled)"}\n`;
-      });
-      out += "\n";
+    // Fill fields
+    Object.entries(FIELD_MAP).forEach(([fieldId, { key }]) => {
+      const val = parsed[key];
+      if (val && val !== 'NOT FOUND' && val.trim().length > 2) {
+        fillField(fieldId, val, 'high');
+      }
     });
-    const blob = new Blob([out], { type: "text/plain" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "discovery-brief.txt";
-    a.click();
-    showToast("Exported!");
+
+    setStatus(`Analysis complete · ${url}`, false);
+    const bar = document.getElementById('status-bar');
+    bar.style.background = '#0f1a0f';
+    bar.style.color = '#5aad6e';
+    bar.classList.add('active');
+
+  } catch (err) {
+    console.error(err);
+    setStatus('Error connecting to API. Check your connection.', false);
+    showToast('Analysis failed — check console');
+  }
+
+  document.getElementById('analyze-btn').disabled = false;
+  updateCounts();
+}
+
+function clearAll() {
+  document.querySelectorAll('.field textarea, .field input[type="text"]').forEach(el => {
+    el.value = '';
+  });
+  document.querySelectorAll('.field').forEach(el => el.classList.remove('filled'));
+  document.querySelectorAll('.confidence').forEach(el => el.remove());
+  updateCounts();
+  showToast('All fields cleared');
+}
+
+function exportTXT() {
+  let out = `DISCOVERY QUESTIONNAIRE\n`;
+  out += `Exported: ${new Date().toLocaleDateString()}\n`;
+  out += `URL: ${document.getElementById('url-input').value}\n`;
+  out += `${'─'.repeat(60)}\n\n`;
+
+  const sectionLabels = {
+    marketing: 'MARKETING OVERVIEW',
+    products: 'PRODUCT & SERVICE OVERVIEW',
+    competitive: 'COMPETITIVE OVERVIEW',
+    website: 'WEBSITE FUTURE STATE',
+    happiness: 'HAPPINESS FACTOR',
+    hosting: 'HOSTING REQUIREMENTS',
   };
 
-  const filledCount = Object.values(filled).filter(Boolean).length;
+  Object.entries(SECTION_FIELDS).forEach(([sec, fields]) => {
+    out += `${sectionLabels[sec]}\n${'─'.repeat(40)}\n`;
+    fields.forEach(fid => {
+      const w = document.getElementById(fid);
+      const el = w?.querySelector('textarea, input');
+      const label = w?.querySelector('label')?.textContent?.replace(/[✓~?].*$/, '').trim();
+      const val = el?.value?.trim() || '(not filled)';
+      out += `\n${label}\n${val}\n`;
+    });
+    out += '\n';
+  });
 
-  return (
-    <div style={{ fontFamily: "'Georgia', serif", background: "#f4f1eb", minHeight: "100vh", color: "#1a1816" }}>
-      {/* Header */}
-      <div style={{ background: "#1a1816", color: "#f4f1eb", padding: "1.8rem 2rem 1.4rem" }}>
-        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem" }}>
-          <div>
-            <h1 style={{ fontFamily: "Georgia, serif", fontSize: "1.9rem", fontWeight: 400, letterSpacing: "-0.02em", lineHeight: 1 }}>
-              Discovery <span style={{ fontStyle: "italic", color: "#c8a882" }}>Brief</span>
-            </h1>
-            <p style={{ marginTop: "0.35rem", fontSize: "0.72rem", color: "#666", fontFamily: "monospace", letterSpacing: "0.08em", textTransform: "uppercase" }}>
-              AI-Powered Auto-Fill · Client Questionnaire
-            </p>
-          </div>
-          <div style={{ background: "#c8470a", color: "white", fontFamily: "monospace", fontSize: "0.68rem", letterSpacing: "0.08em", textTransform: "uppercase", padding: "0.35rem 0.8rem", borderRadius: "2px" }}>
-            ✦ Powered by Claude
-          </div>
-        </div>
-
-        {/* URL Bar */}
-        <div style={{ marginTop: "1.4rem", display: "flex", gap: 0, border: "1px solid #333", borderRadius: "3px", overflow: "hidden", maxWidth: "720px" }}>
-          <div style={{ background: "#111", color: "#555", fontFamily: "monospace", fontSize: "0.8rem", padding: "0 0.8rem", display: "flex", alignItems: "center", borderRight: "1px solid #333", whiteSpace: "nowrap" }}>
-            → URL
-          </div>
-          <input
-            type="text"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !loading && analyzeURL()}
-            placeholder="https://clientwebsite.com"
-            style={{ flex: 1, background: "#0d0d0d", color: "#f0ede8", border: "none", outline: "none", padding: "0.75rem 1rem", fontFamily: "monospace", fontSize: "0.85rem" }}
-          />
-          <button
-            onClick={analyzeURL}
-            disabled={loading || !url.trim()}
-            style={{ background: loading ? "#444" : "#c8470a", color: "white", border: "none", padding: "0 1.5rem", fontFamily: "Georgia, serif", fontSize: "0.85rem", cursor: loading ? "not-allowed" : "pointer", whiteSpace: "nowrap", transition: "background 0.15s" }}
-          >
-            {loading ? "Analyzing…" : "Analyze Site"}
-          </button>
-        </div>
-
-        {/* Status */}
-        {status && (
-          <div style={{ marginTop: "0.6rem", fontFamily: "monospace", fontSize: "0.75rem", color: status.startsWith("✓") ? "#6db87a" : status.startsWith("⚠") ? "#e07a5f" : "#888", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            {loading && <span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: "#c8470a", animation: "none", opacity: 0.9 }}>●</span>}
-            {status}
-          </div>
-        )}
-      </div>
-
-      {/* Body */}
-      <div style={{ maxWidth: "860px", margin: "0 auto", padding: "2rem 2rem 4rem" }}>
-        {!analyzed ? (
-          <div style={{ textAlign: "center", padding: "5rem 2rem", color: "#999" }}>
-            <div style={{ fontFamily: "Georgia, serif", fontStyle: "italic", fontSize: "1.8rem", color: "#d4cfc5", marginBottom: "0.75rem" }}>
-              Paste a URL above
-            </div>
-            <p style={{ fontSize: "0.88rem", lineHeight: 1.7, maxWidth: "340px", margin: "0 auto" }}>
-              Claude will visit the website and automatically fill out as much of the discovery questionnaire as it can find.
-            </p>
-          </div>
-        ) : (
-          <>
-            {/* Progress */}
-            <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "2rem", padding: "0.9rem 1.1rem", background: "white", borderRadius: "3px", border: "1px solid #ddd" }}>
-              <div style={{ flex: 1, height: "4px", background: "#e8e4dc", borderRadius: "2px", overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${(filledCount / ALL_FIELD_IDS.length) * 100}%`, background: filledCount > 15 ? "#2d7a4f" : filledCount > 8 ? "#c8470a" : "#c8a882", transition: "width 0.6s ease", borderRadius: "2px" }} />
-              </div>
-              <span style={{ fontFamily: "monospace", fontSize: "0.75rem", color: "#888", whiteSpace: "nowrap" }}>
-                {filledCount} / {ALL_FIELD_IDS.length} filled
-              </span>
-            </div>
-
-            {/* Sections */}
-            {FIELDS.map(({ section, fields }) => {
-              const sectionFilled = fields.filter((f) => filled[f.id]).length;
-              return (
-                <div key={section} style={{ marginBottom: "2.5rem" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1.1rem", paddingBottom: "0.6rem", borderBottom: "1px solid #d4cfc5" }}>
-                    <span style={{ fontFamily: "monospace", fontSize: "0.68rem", color: "#999", background: "#ede9df", padding: "0.2rem 0.45rem", borderRadius: "2px", letterSpacing: "0.05em" }}>
-                      {section.split("·")[0].trim()}
-                    </span>
-                    <span style={{ fontFamily: "Georgia, serif", fontSize: "1.1rem", fontWeight: 400 }}>
-                      {section.split("·")[1]?.trim()}
-                    </span>
-                    <span style={{ marginLeft: "auto", fontFamily: "monospace", fontSize: "0.68rem", color: sectionFilled === fields.length ? "#2d7a4f" : "#aaa" }}>
-                      {sectionFilled}/{fields.length}
-                    </span>
-                  </div>
-
-                  {fields.map(({ id, label, multi }) => (
-                    <div key={id} style={{ marginBottom: "1rem" }}>
-                      <label style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.75rem", color: filled[id] ? "#2d7a4f" : "#888", marginBottom: "0.3rem", fontFamily: "monospace", letterSpacing: "0.03em", textTransform: "uppercase" }}>
-                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: filled[id] ? "#2d7a4f" : "#ccc", flexShrink: 0, transition: "background 0.3s" }} />
-                        {label}
-                        {filled[id] && <span style={{ marginLeft: "0.3rem", background: "#dceee2", color: "#1a6135", padding: "0.1rem 0.35rem", borderRadius: "2px", fontSize: "0.62rem" }}>✓ auto</span>}
-                      </label>
-                      {multi ? (
-                        <textarea
-                          value={values[id] || ""}
-                          onChange={(e) => updateField(id, e.target.value)}
-                          rows={3}
-                          style={{ width: "100%", background: filled[id] ? "#eef5f0" : "white", border: `1px solid ${filled[id] ? "#b8d4c0" : "#ddd"}`, borderRadius: "3px", padding: "0.65rem 0.8rem", fontFamily: "Georgia, serif", fontSize: "0.88rem", lineHeight: 1.6, color: "#1a1816", resize: "vertical", outline: "none", transition: "all 0.2s", boxSizing: "border-box" }}
-                        />
-                      ) : (
-                        <input
-                          type="text"
-                          value={values[id] || ""}
-                          onChange={(e) => updateField(id, e.target.value)}
-                          style={{ width: "100%", background: filled[id] ? "#eef5f0" : "white", border: `1px solid ${filled[id] ? "#b8d4c0" : "#ddd"}`, borderRadius: "3px", padding: "0.65rem 0.8rem", fontFamily: "Georgia, serif", fontSize: "0.88rem", color: "#1a1816", outline: "none", transition: "all 0.2s", boxSizing: "border-box" }}
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-
-            {/* Export bar */}
-            <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", paddingTop: "1.5rem", borderTop: "1px solid #d4cfc5" }}>
-              <button onClick={exportTXT} style={{ background: "#1a1816", color: "#f4f1eb", border: "none", padding: "0.65rem 1.4rem", borderRadius: "3px", fontFamily: "Georgia, serif", fontSize: "0.85rem", cursor: "pointer" }}>
-                Export as TXT
-              </button>
-              <button onClick={clearAll} style={{ background: "transparent", color: "#666", border: "1px solid #ccc", padding: "0.65rem 1.4rem", borderRadius: "3px", fontFamily: "Georgia, serif", fontSize: "0.85rem", cursor: "pointer" }}>
-                Clear All
-              </button>
-              <span style={{ marginLeft: "auto", fontFamily: "monospace", fontSize: "0.72rem", color: "#aaa" }}>
-                {filledCount} of {ALL_FIELD_IDS.length} fields filled
-              </span>
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Toast */}
-      {toast && (
-        <div style={{ position: "fixed", bottom: "1.5rem", right: "1.5rem", background: "#1a1816", color: "#f4f1eb", padding: "0.65rem 1.1rem", borderRadius: "3px", fontFamily: "monospace", fontSize: "0.8rem", zIndex: 999 }}>
-          {toast}
-        </div>
-      )}
-    </div>
-  );
+  const blob = new Blob([out], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'discovery-brief.txt';
+  a.click();
+  showToast('Exported successfully');
 }
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// Allow Enter to trigger analyze
+document.getElementById('url-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') analyzeURL();
+});
+</script>
+</body>
+</html>
