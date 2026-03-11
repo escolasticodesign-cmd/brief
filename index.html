@@ -670,7 +670,7 @@ Respond ONLY with a valid JSON object — no markdown, no explanation, just raw 
   try {
     const response = await fetch("/api/analyze", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "application/json" },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
         max_tokens: 1000,
